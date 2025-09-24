@@ -399,7 +399,7 @@ backend_api.on(["PUT", "POST"], '/update/:id', adminAuthMiddleware, async (c: Co
     }
 
     // 处理过期时间
-    let expiration = existingNote.expiration;
+    let expiration = existingNote.expiration || null;
     if (body.expiration || body.expirationTtl) {
         if (body.expiration) {
             expiration = Number(body.expiration) * 1000;
@@ -414,7 +414,11 @@ backend_api.on(["PUT", "POST"], '/update/:id', adminAuthMiddleware, async (c: Co
                 message: 'Expiration targets that are less than 60 seconds into the future are not supported.'
             }, 400);
         }
+    } else {
+        expiration = null;
     }
+    
+    
 
     // 构建更新数据
     const updatedData = {
@@ -423,8 +427,8 @@ backend_api.on(["PUT", "POST"], '/update/:id', adminAuthMiddleware, async (c: Co
         content: body.content ?? existingNote.content,
         length: body.content.length ?? existingNote.length,
         textType: body.textType ?? existingNote.textType,
-        encryption: body.password ? true : existingNote.encryption,
-        password: body.password ?? existingNote.password,
+        encryption: body.password ? true : false,
+        password: body.password ?? null,
         updatedAt: now,
         expiration: expiration
     };

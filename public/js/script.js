@@ -305,7 +305,7 @@ async function createNote(e) {
     const expiration = document.getElementById('expiration').value;
     
     try {
-        const expirationTimestamp = expiration ? Math.floor(new Date(expiration).getTime() / 1000) : undefined;
+        const expirationTimestamp = expiration ? Math.floor(new Date(expiration).getTime() / 1000) : null;
         
         iziToast.info({
             title: '加载中',
@@ -600,7 +600,7 @@ async function viewNote(noteId, encryption, password) {
             document.getElementById('editTextType').value = currentNoteTextType;
             document.getElementById('editPassword').value = data.password;
             document.getElementById('editExpiration').value = data.expiration ? (() => {
-  const d = new Date();
+  const d = new Date(data.expiration);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 })() : "";
             
@@ -711,7 +711,7 @@ async function saveEdit() {
     }
     
     try {
-        const expirationTimestamp = expiration ? Math.floor(new Date(expiration).getTime() / 1000) : undefined;
+        const expirationTimestamp = expiration ? Math.floor(new Date(expiration).getTime() / 1000) : null;
         
         iziToast.info({
             title: '加载中',
@@ -724,7 +724,7 @@ async function saveEdit() {
             title,
             content,
             textType: textType || 'plain',
-            password: password || undefined,
+            password: password,
             expiration: expirationTimestamp
         });
 
