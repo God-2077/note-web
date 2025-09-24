@@ -1,0 +1,46 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "notes-api",
+    "main": "src/index.ts",
+    "compatibility_date": "2025-09-06",
+    "kv_namespaces": [
+        {
+            "binding": "KV",
+            "id": "id",
+            "preview_id": "<ID_OF_PREVIEW_KV_NAMESPACE_FOR_LOCAL_DEVELOPMENT>"
+        }
+    ],
+    "vars": {
+        "ADMIN_TOKEN": "ADMIN_TOKEN",
+        "GUEST_VISIT": "GUEST_VISIT"
+    },
+    "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1
+    },
+    "version_metadata": {
+        "binding": "CF_VERSION_METADATA"
+    },
+    // "triggers": {
+    //     "crons": [
+    //         "0 0 * * *"
+    //     ]
+    // },
+    "routes": [
+      {
+        "pattern": "ksable.top",
+        "custom_domain": true
+      },
+      {
+        "pattern": "ksable.top",
+        "custom_domain": true
+      }
+    ],
+    "assets": {
+      "directory": "public",
+      // "directory": "./dist/",
+      // "not_found_handling": "single-page-application",
+      "binding": "ASSETS",
+      "run_worker_first": ["/api/*","/console/*"]
+    }
+}

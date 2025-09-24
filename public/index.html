@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>笔记管理平台</title>
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/style.css">
+    <script type="text/javascript" defer src="/js/sdk.js"></script>
+    <script type="text/javascript" defer src="/js/script.js"></script>
+    <link rel="stylesheet" href="https://npm.onmicrosoft.cn/izitoast@1.4.0/dist/css/iziToast.min.css">
+    <script defer src="https://npm.onmicrosoft.cn/izitoast@1.4.0/dist/js/iziToast.min.js"></script>
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> -->
+     <link rel="stylesheet" href="/css/fontello/css/more.css">
+    <script defer src="https://npm.onmicrosoft.cn/marked@5.1.0/marked.min.js"></script>
+    <link rel="stylesheet" href="https://npm.onmicrosoft.cn/highlight.js@11.9.0/styles/github-dark-dimmed.min.css">
+    <script defer src="https://npm.onmicrosoft.cn/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
+    <script defer src="https://npm.onmicrosoft.cn/clipboard@2.0.11/dist/clipboard.min.js"></script>
+    <script defertype="text/javascript" defer src="/js/RegisterSW.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="icon-book"></i> 笔记管理平台
+            </div>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="icon-moon"></i>
+            </button>
+        </header>
+        
+        <!-- 标签页导航 -->
+        <div class="tabs">
+            <div class="tab active" data-target="noteListPage">笔记列表</div>
+            <div class="tab" data-target="createNotePage">创建笔记</div>
+            <div class="tab" data-target="searchPage">搜索笔记</div>
+            <div class="tab" data-target="ConfigPage">配置</div>
+        </div>
+
+        <!-- 笔记列表页面 -->
+        <div id="noteListPage" class="page active">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">笔记列表</div>
+                    <button id="refreshNotes"><i class="icon-arrows-cw"></i> 刷新</button>
+                </div>
+                
+                <div class="filters-collapsible">
+                    <button id="toggleFilters">显示筛选选项 <i class="icon-angle-circled-down"></i></button>
+                    <div class="filters-content" id="filtersContent">
+                        <div class="filters">
+                            <div class="filter-item">
+                                <label for="sort">排序方式</label>
+                                <select id="sort">
+                                    <option value="date">创建时间（最新优先）</option>
+                                    <option value="update">更新时间（最新优先）</option>
+                                    <option value="a-z">标题（A-Z）</option>
+                                    <option value="z-a">标题（Z-A）</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="limit">每页数量</label>
+                                <input type="number" id="limit" value="10" min="1" max="100">
+                            </div>
+                            <div class="filter-item">
+                                <label for="page">页码</label>
+                                <input type="number" id="page" value="0" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="filters">
+                            <div class="filter-item">
+                                <label for="startTime">开始时间</label>
+                                <input type="datetime-local" id="startTime">
+                            </div>
+                            <div class="filter-item">
+                                <label for="endTime">结束时间</label>
+                                <input type="datetime-local" id="endTime">
+                            </div>
+                            <div class="filter-item">
+                                <label style="opacity: 0;">应用筛选</label>
+                                <button id="applyFilters" class="full">应用筛选</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="notesList" class="notes-grid">
+                    <!-- 示例笔记卡片 -->
+                    <div class="note-card">
+                        <div class="note-title">示例Markdown笔记 <span class="text-type-badge">Markdown</span></div>
+                        <div class="note-meta">
+                            <span>创建: 2023/10/15 14:30:25</span>
+                            <span>更新: 2023/10/15 14:30:25</span>
+                        </div>
+                        <div class="note-meta">
+                            <span>长度: 256 字符</span>
+                            <span>未加密</span>
+                        </div>
+                        <div class="note-actions">
+                            <button class="view-btn">查看</button>
+                            <button class="delete-btn btn-danger btn-sm">删除</button>
+                        </div>
+                    </div>
+                    
+                    <div class="note-card">
+                        <div class="note-title">示例HTML笔记 <span class="text-type-badge">HTML</span></div>
+                        <div class="note-meta">
+                            <span>创建: 2023/10/15 14:30:25</span>
+                            <span>更新: 2023/10/15 14:30:25</span>
+                        </div>
+                        <div class="note-meta">
+                            <span>长度: 512 字符</span>
+                            <span>未加密</span>
+                        </div>
+                        <div class="note-actions">
+                            <button class="view-btn">查看</button>
+                            <button class="delete-btn btn-danger btn-sm">删除</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pagination">
+                    <button id="prevPage" disabled>上一页</button>
+                    <span id="pageInfo">第 0 页</span>
+                    <button id="nextPage">下一页</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 创建笔记页面 -->
+        <div id="createNotePage" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">创建新笔记</div>
+                </div>
+                <div class="remind">
+                    <div>需要管理员Token才能创建笔记</div>
+                    <br />
+                    <button class="full">设置 Token</button>
+                </div>
+                <form id="createNoteForm">
+                    <div class="form-group">
+                        <label for="title">标题</label>
+                        <input type="text" id="title">
+                    </div>
+                    <div class="form-group">
+                        <label for="content">内容</label>
+                        <textarea id="content"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="textType">文本类型</label>
+                        <select id="textType">
+                            <option value="plain">纯文本</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="html">HTML</option>
+                            <option value="code">源代码</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">密码（可选）</label>
+                        <input type="text" id="password">
+                    </div>
+                    <div class="form-group">
+                        <label for="expiration">过期时间（可选）</label>
+                        <input type="datetime-local" id="expiration">
+                    </div>
+                    <button type="submit" class="full">创建笔记</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 新增搜索页面 -->
+        <div id="searchPage" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">搜索笔记</div>
+                </div>
+                
+                <div class="search-form">
+                    <input type="text" id="searchQuery" class="search-input" placeholder="输入搜索关键词...">
+                    <button id="searchButton">搜索</button>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-item">
+                        <label for="searchLimit">每页数量</label>
+                        <input type="number" id="searchLimit" value="10" min="1" max="100">
+                    </div>
+                    <div class="filter-item">
+                        <label for="searchPageNum">页码</label>
+                        <input type="number" id="searchPageNum" value="1" min="1">
+                    </div>
+                </div>
+                
+                <div class="search-results-info" id="searchResultsInfo">
+                    请输入关键词进行搜索
+                </div>
+                
+                <div id="searchResults" class="notes-grid">
+                    <!-- 搜索结果将在这里显示 -->
+                </div>
+                
+                <div class="pagination">
+                    <button id="searchPrevPage" disabled>上一页</button>
+                    <span id="searchPageInfo">第 1 页</span>
+                    <button id="searchNextPage" disabled>下一页</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 配置页面 -->
+    <div id="ConfigPage" class="page">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">配置</div>
+            </div>
+            <div class="form-group">
+                <label for="baseUrl">API 基础 URL</label>
+                <input type="url" id="baseUrl" placeholder="https://your-worker.your-account.workers.dev/api">
+            </div>
+            <div class="form-group">
+                <label for="adminToken">管理员 Token</label>
+                <input type="password" id="adminToken" placeholder="输入管理员token以启用编辑功能">
+            </div>
+            <!-- 添加记住Token的复选框 -->
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="rememberToken" checked> 记住Token
+                </label>
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">如果不勾选，关闭浏览器后Token将被删除</p>
+            </div>
+            <div class="form-group">
+                <label for="serviceWorkerEnabled">Service Worker 状态</label>
+                <select id="serviceWorkerEnabled">
+                    <option value="1">启用Service Worker</option>
+                    <option value="0">禁用Service Worker</option>
+                </select>
+            </div>
+            <button id="saveConfig" class="full">保存配置</button>
+        </div>
+    </div>
+
+    <!-- 查看笔记的模态框 -->
+    <div class="modal" id="viewNoteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalNoteTitle"></h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="note-meta">
+                    <span id="modalNoteCreated"></span>
+                    <span id="modalNoteUpdated"></span>
+                    <span id="modalNoteType"></span>
+                </div>
+                <div class="form-group">
+                    <div id="modalNoteContent" class="note-content"></div>
+                </div>
+                
+                <!-- 编辑模式 -->
+                <div class="edit-mode" id="editMode">
+                    <div class="form-group">
+                        <label for="editTitle">标题</label>
+                        <input type="text" id="editTitle">
+                    </div>
+                    <div class="form-group">
+                        <label for="editContent">内容</label>
+                        <textarea id="editContent" rows="10"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTextType">文本类型</label>
+                        <select id="editTextType">
+                            <option value="plain">纯文本</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="html">HTML</option>
+                            <option value="code">源代码</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPassword">密码（留空则不修改）</label>
+                        <input type="text" id="editPassword">
+                    </div>
+                    <div class="form-group">
+                        <label for="editExpiration">过期时间</label>
+                        <input type="datetime-local" id="editExpiration">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div>
+                    <button class="btn-danger" id="deleteNote">删除笔记</button>
+                    <button id="editNote">修改笔记</button>
+                </div>
+                <div>
+                    <button id="saveEdit" class="hidden">保存修改</button>
+                    <button id="cancelEdit" class="hidden">取消</button>
+                    <button id="closeModal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 密码输入提示框 -->
+    <div class="password-prompt" id="passwordPrompt">
+        <div class="password-prompt-content">
+            <h3>需要密码</h3>
+            <p>该笔记已加密，请输入密码查看内容</p>
+            <div class="form-group">
+                <input type="password" id="notePassword" placeholder="输入密码">
+            </div>
+            <div class="form-group">
+                <button id="submitPassword">确认</button>
+                <button id="cancelPassword">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+
+    </script>
+</body>
+</html>
