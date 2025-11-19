@@ -1,12 +1,18 @@
 # note-web
 
+开发
+
 ```shell
 npm install
 npm run dev
 ```
 
+部署
+
 ```shell
 npm run deploy
 ```
 
->记得要填写好 wrangler.jsonc 的变量和 KV id
+记得要在 `wrangler.jsonc` 填入自己的配置
+
+

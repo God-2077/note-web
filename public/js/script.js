@@ -1,5 +1,5 @@
 // 配置和状态管理
-const config = JSON.parse(localStorage.getItem('config')) || {
+const defaultConfig = {
     baseUrl: location.origin + "/api",
     adminToken: '',
     isDarkMode: false,
@@ -11,13 +11,17 @@ const config = JSON.parse(localStorage.getItem('config')) || {
     search: {
         limit: 10,
     },
+    editor: {
+        // type: 'bytemd',
+        config: {
+            bytemd:{
+                mode: 'auto',
+                previewDebounce: 300,
+            }
+        }
+    }
 };
-// const config = {
-//     baseUrl: localStorage.getItem('baseUrl') || location.origin + "/api",
-//     adminToken: localStorage.getItem('adminToken') || '',
-//     isDarkMode: localStorage.getItem('darkMode') === 'true',
-//     rememberToken: localStorage.getItem('rememberToken') === 'true',
-// };
+const config = {...defaultConfig, ...JSON.parse(localStorage.getItem('config'))}
 
 let currentNoteId = null;
 let isEditMode = false;
@@ -26,7 +30,15 @@ let totalNotes = 0;
 let notesPerPage = 10;
 let currentEncryptedNoteId = null;
 let currentNoteTextType = 'plain';
-
+let OriginalTitle = null;
+let editor_bytemd = null;
+// 异步加载 ByteMD 中文语言包
+const bytemd_locale_zh_cn = (async function() {
+    const response = await fetch('https://npm.onmicrosoft.cn/bytemd@latest/locales/zh_Hans.json');
+    const locale = await response.json();
+    return locale;
+})();
+let bytemdModalTargetId = null;
 
 // 搜索相关变量
 let searchCurrentPage = 1;
@@ -80,7 +92,11 @@ function loadConfig() {
     document.getElementById('searchLimit').value = config.search.limit;
 
     // serviceWorkerEnabled
-    document.getElementById('serviceWorkerEnabled').value = localStorage.getItem('serviceWorkerEnabled') || '1';
+    document.getElementById('serviceWorkerEnabled').value = localStorage.getItem('serviceWorkerEnabled') || '0';
+
+    // bytemd 编辑器配置
+    document.getElementById('bytemdMode').value = config.editor.config.bytemd.mode;
+    document.getElementById('BytemdPreviewDebounce').value = config.editor.config.bytemd.previewDebounce;
 
     // 初始化SDK
     initSDK();
@@ -170,13 +186,46 @@ function setupEventListeners() {
             performSearch();
         }
     });
-    
+
     document.getElementById('searchPageNum').addEventListener('change', function() {
         if (currentSearchQuery) {
             searchCurrentPage = parseInt(this.value) || 1;
             performSearch();
         }
     });
+
+    // 分享笔记
+    document.getElementById('copyLink').addEventListener('click', copyLink);
+
+    // 服务端版本信息
+    document.getElementById('workerVersionInfo').addEventListener('click', getWorkerVersionInfo);
+    
+    // adminToken 回车保存
+    document.getElementById('adminToken').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveConfig();
+        }
+    });
+
+    // 输入框自动设置 MIME类型
+    document.getElementById('textType').addEventListener('change', setupMimeTypeAutoSet);
+    document.getElementById('editTextType').addEventListener('change', setupMimeTypeAutoSet);
+    
+    // 打开 ByteMD 编辑器
+    document.querySelectorAll('.openBytemdModal').forEach(item => {
+        item.addEventListener('click', openBytemdModal);
+    });
+
+    // 确认 ByteMD 编辑器
+    document.querySelectorAll('.confirmBytemdModal').forEach(item => {
+        item.addEventListener('click', confirmBytemdSave);
+    });
+    // 关闭 ByteMD 编辑器
+    document.querySelectorAll('.closeBytemdModal').forEach(item => {
+        item.addEventListener('click', closeBytemdModal);
+    });
+    document.getElementById('textType').addEventListener('change', showbytemdbtn);
+    document.getElementById('editTextType').addEventListener('change', showbytemdbtn);
 }
 
 // 切换标签页
@@ -208,6 +257,10 @@ function saveConfig() {
     config.baseUrl = document.getElementById('baseUrl').value;
     config.rememberToken = document.getElementById('rememberToken').checked;
     config.adminToken = document.getElementById('adminToken').value || '';
+
+    // bytemd 编辑器配置
+    config.editor.config.bytemd.mode = document.getElementById('bytemdMode').value;
+    config.editor.config.bytemd.previewDebounce = parseInt(document.getElementById('BytemdPreviewDebounce').value) || 300;
 
     // 保存配置到localStorage
     updateAndPersistConfig();
@@ -301,6 +354,7 @@ async function createNote(e) {
     const title = document.getElementById('title').value;
     const content = document.getElementById('content').value;
     const textType = document.getElementById('textType').value;
+    const mimeType = document.getElementById('mimeType').value;
     const password = document.getElementById('password').value;
     const expiration = document.getElementById('expiration').value;
     
@@ -317,7 +371,8 @@ async function createNote(e) {
         const data = await noteSDK.createNote({
             title: title || undefined,
             content: content || undefined,
-            textType: textType || 'plain',
+            textType: textType || 'markdown',
+            mimeType: mimeType || 'text/markdown',
             password: password || undefined,
             expiration: expirationTimestamp
         });
@@ -338,6 +393,8 @@ async function createNote(e) {
             
             // 切换到笔记列表页面
             switchTab('noteListPage');
+            
+            scrollToElement('#noteListPage');
         } else {
             iziToast.error({
                 title: '错误',
@@ -395,16 +452,18 @@ async function loadNotes() {
             timeout: false,
         });
         
-        const data = await noteSDK.listNotes(options);
+        const result = await noteSDK.listNotes(options);
         
         closeToast('loading-toast');
 
-        if (data.success) {
+        if (result.success) {
 
             iziToast.success({
                 title: '成功',
                 message: '笔记列表已加载'
             });
+
+            const data = result.data;
 
             totalNotes = data.total || data.data.length;
             displayNotes(data.data);
@@ -413,7 +472,7 @@ async function loadNotes() {
         } else {
             iziToast.error({
                 title: '错误',
-                message: data.message || '获取笔记列表失败'
+                message: result.message || '获取笔记列表失败'
             });
         }
     } catch (error) {
@@ -443,7 +502,7 @@ function displayNotes(notes) {
         const updated = new Date(note.updatedAt).toLocaleString();
         const textTypeLabel = getTextTypeLabel(note.textType);
         noteElement.innerHTML = `
-            <div class="note-title">${note.title} ${textTypeLabel}</div>
+            <div class="note-title"><span class="limit-lines-2">${note.title}</span> ${textTypeLabel}</div>
             <div class="note-meta">
                 <span>创建: ${created}</span>
                 <span>更新: ${updated}</span>
@@ -544,17 +603,13 @@ async function viewNote(noteId, encryption, password) {
     if (!noteSDK) {
         return;
     }
-    console.log({
-        noteId: noteId ? true : false,
-        encryption: encryption ? true : false
-    })
-    console.log('viewNote', noteId, encryption);
 
     if (!config.adminToken) {
         // 加密笔记需要密码
         if (!password && (encryption && encryption == 'true')){
             currentEncryptedNoteId = noteId;
-            document.getElementById('passwordPrompt').style.display = 'flex';
+            // document.getElementById('passwordPrompt').style.display = 'flex';
+            displayPasswordPrompt(true);
             return;
         }
     }
@@ -567,19 +622,26 @@ async function viewNote(noteId, encryption, password) {
             class: 'viewNoteToast',
             timeout: false,
         });
-
-        const data = await noteSDK.getNote(noteId, password ? password : undefined);
-        
+        const result = await noteSDK.getNote(noteId, password ? password : undefined);
         closeToast('viewNoteToast');
 
-        if (data.success) {
+        if (result.success) {
 
             iziToast.success({
                 title: '成功',
                 message: '笔记加载成功'
             });
 
+            const data = result.data;
+            
+            // 关闭密码框
             cancelPassword();
+            
+            // 更新当前页面链接
+            updateUrlWithNoteId(data.id);
+            
+            // 更新页面标题
+            document.title = `${truncateString(data.title)} - ${OriginalTitle}`;
 
             // 显示模态框
             document.getElementById('modalNoteTitle').textContent = data.title;
@@ -598,6 +660,7 @@ async function viewNote(noteId, encryption, password) {
             document.getElementById('editTitle').value = data.title;
             document.getElementById('editContent').value = data.content;
             document.getElementById('editTextType').value = currentNoteTextType;
+            document.getElementById('editMimeType').value = data.mimeType || 'text/markdown';
             document.getElementById('editPassword').value = data.password;
             document.getElementById('editExpiration').value = data.expiration ? (() => {
   const d = new Date(data.expiration);
@@ -605,6 +668,11 @@ async function viewNote(noteId, encryption, password) {
 })() : "";
             
             currentNoteId = data.id;
+
+            // 设置 Raw 链接
+            const rawUrl = await noteSDK.getNoteRawUrl(data.id);
+            document.getElementById('RawLink').href = rawUrl;
+            
             document.getElementById('viewNoteModal').style.display = 'flex';
             
             document.body.classList.add('NoteModal-open');
@@ -614,7 +682,7 @@ async function viewNote(noteId, encryption, password) {
         } else {
             iziToast.error({
                 title: '错误',
-                message: data.message || '获取笔记详情失败'
+                message: result.message || '获取笔记详情失败'
             });
         }
     } catch (error) {
@@ -623,6 +691,17 @@ async function viewNote(noteId, encryption, password) {
             title: '错误',
             message: '获取笔记详情失败: ' + error.message
         });
+        if (error.message == "Encrypted content, password required") {
+          iziToast.info({
+            title: '请输入密码',
+            timeout: 8 * 1000
+          });
+          currentEncryptedNoteId = noteId;
+          displayPasswordPrompt(true);
+          return;
+        }
+        // 抛出错误，让调用者处理
+        throw error;
     }
 }
 
@@ -641,9 +720,25 @@ function submitPassword() {
 
 // 取消密码输入
 function cancelPassword() {
-    document.getElementById('passwordPrompt').style.display = 'none';
+    // document.getElementById('passwordPrompt').style.display = 'none';
+    displayPasswordPrompt(false);
     document.getElementById('notePassword').value = '';
     currentEncryptedNoteId = null;
+}
+
+// 展示密码框
+function displayPasswordPrompt(display) {
+  if (display == undefined) {
+    throw TypeError('Please enter');
+  }
+  if (display) {
+    document.getElementById('passwordPrompt').style.display = 'flex';
+    return;
+  } else if (!display) {
+    document.getElementById('passwordPrompt').style.display = 'none';
+    return;
+  }
+  throw TypeError('Invalid input');
 }
 
 // 启用编辑模式
@@ -666,6 +761,8 @@ function enableEditMode() {
     // 切换按钮显示
     document.getElementById('editNote').classList.add('hidden');
     document.getElementById('deleteNote').classList.add('hidden');
+    document.getElementById('copyLink').classList.add('hidden');
+    document.getElementById('NoteRaw').classList.add('hidden');
     document.getElementById('saveEdit').classList.remove('hidden');
     document.getElementById('cancelEdit').classList.remove('hidden');
 }
@@ -675,9 +772,11 @@ function cancelEdit() {
     isEditMode = false;
     
     // 显示查看模式，隐藏编辑模式
-    document.getElementById('modalNoteTitle').style.display = 'block';
+    // document.getElementById('modalNoteTitle').style.display = 'block';
     document.getElementById('modalNoteContent').style.display = 'block';
     document.getElementById('editMode').style.display = 'none';
+    document.getElementById('copyLink').classList.remove('hidden');
+    document.getElementById('NoteRaw').classList.remove('hidden');
     
     // 切换按钮显示
     document.getElementById('editNote').classList.remove('hidden');
@@ -699,6 +798,7 @@ async function saveEdit() {
     const title = document.getElementById('editTitle').value;
     const content = document.getElementById('editContent').value;
     const textType = document.getElementById('editTextType').value;
+    const mimeType = document.getElementById('editMimeType').value;
     const password = document.getElementById('editPassword').value;
     const expiration = document.getElementById('editExpiration').value;
     
@@ -720,17 +820,18 @@ async function saveEdit() {
             timeout: false,
         });
 
-        const data = await noteSDK.updateNote(currentNoteId, {
+        const result = await noteSDK.updateNote(currentNoteId, {
             title,
             content,
-            textType: textType || 'plain',
+            textType: textType || 'markdown',
+            mimeType: mimeType,
             password: password,
             expiration: expirationTimestamp
         });
 
         closeToast('saveEditToast');
         
-        if (data.success) {
+        if (result.success) {
             iziToast.success({
                 title: '成功',
                 message: '笔记已更新'
@@ -770,7 +871,15 @@ function closeModal() {
     document.getElementById('viewNoteModal').style.display = 'none';
     currentNoteId = null;
     document.body.classList.remove('NoteModal-open');
+    
+    // 更新当前页面链接
+    updateUrlWithNoteId(false);
+    
+    // 退出编辑模式
     cancelEdit();
+    
+    // 更新当前页面标题
+    document.title = OriginalTitle;
 }
 
 // 删除笔记
@@ -795,11 +904,11 @@ async function deleteNote(noteId) {
             timeout: false,
         });
         
-        const data = await noteSDK.deleteNote(noteId);
+        const result = await noteSDK.deleteNote(noteId);
 
         closeToast('deleteNoteToast');
         
-        if (data.success) {
+        if (result.success) {
             iziToast.success({
                 title: '成功',
                 message: '笔记已删除'
@@ -811,7 +920,7 @@ async function deleteNote(noteId) {
         } else {
             iziToast.error({
                 title: '错误',
-                message: data.message || '删除笔记失败'
+                message: result.message || '删除笔记失败'
             });
         }
     } catch (error) {
@@ -885,27 +994,24 @@ function renderContentBasedOnType(content, textType) {
     const contentElement = document.getElementById('modalNoteContent');
     const titleEleme = document.querySelector('#modalNoteTitle');
     // 移除之前的类
-    contentElement.classList.remove('markdown-content', 'html-content', 'plain-content', 'code-content');
+    contentElement.classList.remove('markdown-content', 'markdown-body', 'html-content', 'plain-content', 'code-content');
     
     switch(textType) {
         case 'markdown':
-            contentElement.classList.add('markdown-content');
+            contentElement.classList.add('markdown-content', 'markdown-body');
             contentElement.innerHTML = marked.parse(content);
-            // 高亮代码块
-            hljs.highlightAll();
             // 为代码块添加复制按钮
             addCopyButtonsToCodeBlocks();
             break;
         case 'html':
             contentElement.classList.add('html-content');
             contentElement.innerHTML = content;
-            hljs.highlightAll();
             // 为代码块添加复制按钮
             addCopyButtonsToCodeBlocks();
             break;
         case 'code':
             contentElement.classList.add('code-content');
-            content = '<pre><code>' + hljs.highlightAuto(content).value + '</code></pre>';
+            content = '<pre><code>' + escapeHtmlUsingDom(content) + '</code></pre>';
             contentElement.innerHTML = content;
             addCopyButtonsToCodeBlocks();
             break;
@@ -915,6 +1021,9 @@ function renderContentBasedOnType(content, textType) {
             contentElement.textContent = content;
             break;
     }
+    // 代码高亮
+    document.querySelectorAll('#modalNoteContent > div  pre').forEach(e => hljs.highlightElement(e));
+    
     secureExternalLinks();
     titleEleme.focus();
 }
@@ -992,11 +1101,12 @@ async function performSearch() {
             timeout: false,
         });
 
-        const data = await noteSDK.searchNotes(query, options);
+        const result = await noteSDK.searchNotes(query, options);
         
         closeToast('search-toast');
 
-        if (data.success) {
+        if (result.success) {
+            const data = result.data;
 
             iziToast.success({
                 title: '成功',
@@ -1018,7 +1128,7 @@ async function performSearch() {
         } else {
             iziToast.error({
                 title: '错误',
-                message: data.message || '搜索失败'
+                message: result.message || '搜索失败'
             });
         }
     } catch (error) {
@@ -1058,7 +1168,7 @@ function displaySearchResults(notes, query) {
         }
         
         noteElement.innerHTML = `
-            <div class="note-title">${highlightedTitle} ${textTypeLabel}</div>
+            <div class="note-title"><span class="limit-lines-2">${highlightedTitle}</span> ${textTypeLabel}</div>-
             <div class="note-meta">
                 <span>创建: ${created}</span>
                 <span>更新: ${updated}</span>
@@ -1160,17 +1270,263 @@ function secureExternalLinks() {
   });
 }
 
+function generatenoteurl(noteid){
+    const NoteURL = new URL(window.location.origin);
+    NoteURL.searchParams.append('noteid',noteid);
+  return NoteURL.toString();
+}
+
+async function generatenoterawurl(noteid) {
+    return await noteSDK.getNoteRawUrl(noteid);
+}
+
+function copyLink(){
+  const NoteURL = generatenoteurl(currentNoteId);
+  navigator.clipboard.writeText(NoteURL).then(() => {
+    iziToast.success({
+      title: 'Note 链接已复制',
+      message: NoteURL,
+      position: 'topRight'
+    });
+  }).catch(err => {
+    iziToast.error({
+      title: 'Note 链接复制失败',
+      message: err.message,
+      position: 'topRight'
+    });
+  });
+}
+
+async function viewNoteFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  const noteid = params.get('noteid');
+  if (noteid){
+    try{
+      await viewNote(noteid);
+    } catch (error) {
+      iziToast.error({
+        title: 'Note 链接无效',
+        position: 'center', // 居中
+        timeout: false,
+        message: `Note id:${noteid}`,
+        buttons: [
+            ['<button style="">关闭</button>', function (instance, toast) {
+                instance.hide({}, toast);
+            }, true]
+        ]
+      });
+    }
+  }
+}
+
+async function getWorkerVersionInfo() {
+    if (!noteSDK) {
+        return;
+    }
+    try {
+        const versionInfo = (await noteSDK.getVersion()).data.workerVersion;
+        const lastUpdate = (new Date(versionInfo.versionTimestamp)).toLocaleString();
+        document.getElementById('workerVersionId').textContent = versionInfo.versionId;
+        document.getElementById('lastUpdate').textContent = lastUpdate;
+    } catch (error) {
+        document.getElementById('workerVersionId').textContent = 'N/A';
+        document.getElementById('lastUpdate').textContent = 'N/A';
+        console.error('获取 Worker 版本信息失败:', error);
+        throw error;
+    }
+}
+
+function escapeHtmlUsingDom(unsafeText) {
+    const div = document.createElement('div');
+    div.textContent = unsafeText; // 使用textContent属性自动转义
+    return div.innerHTML; // 获取转义后的HTML字符串
+}
+
+function updateUrlWithNoteId(noteid) {
+    const url = new URL(location.href);
+    if (noteid) {
+        url.searchParams.set("noteid",noteid)
+    } else {
+        url.searchParams.delete("noteid")
+    }
+    window.history.replaceState(null, null, url.href);
+}
+
+
+// 限制字符串长度，超出部分用"…"替代
+function truncateString(str, maxLen = 24, replace = "…") {
+  // 非字符串先转成字符串，避免类型错误
+  const targetStr = String(str);
+  // 处理maxLen非法值（空/负数），直接返回原字符串
+  if (maxLen <= 0) return targetStr;
+
+  // 核心：计算“中文2单位、英文1单位”的实际长度
+  let actualLength = 0;
+  for (let char of targetStr) {
+    // 匹配中文字符（Unicode范围），中文加2，其他加1
+    actualLength += /[\u4e00-\u9fa5]/.test(char) ? 2 : 1;
+    // 提前终止循环：实际长度已超maxLen，无需继续计算
+    if (actualLength > maxLen) break;
+  }
+
+  // 实际长度未超，直接返回原字符串
+  if (actualLength <= maxLen) return targetStr;
+
+  // 找到截断点：避免截断半个中文（保证字符完整性）
+  let truncateIndex = 0;
+  let currentLength = 0;
+  while (truncateIndex < targetStr.length) {
+    const char = targetStr[truncateIndex];
+    const charLength = /[\u4e00-\u9fa5]/.test(char) ? 2 : 1;
+    // 若加当前字符会超maxLen，停止截断
+    if (currentLength + charLength > maxLen) break;
+    currentLength += charLength;
+    truncateIndex++;
+  }
+
+  // 截取并拼接省略号
+  return targetStr.slice(0, truncateIndex) + replace;
+}
+
+
+// 平滑移动页面
+function scrollToElement(selector) {
+    // 1. 获取id为notesList的目标元素
+    const targetElement = document.querySelector(selector);
+    // 2. 判断元素存在后，执行平滑滚动
+    if (targetElement) {
+      targetElement.scrollIntoView({
+        behavior: 'smooth', // 平滑滚动 smooth/instant
+        block: 'start'
+      });
+    } else {
+    console.warn(`未找到选择器为"${selector}"的元素，请检查选择器是否正确`);
+    }
+}
+
+// 输入框自动设置 MIME类型
+function setupMimeTypeAutoSet(event) {
+    if (event.target.id !== 'textType' && event.target.id !== 'editTextType') {
+        return;
+    }
+    const map = {
+        'plain': 'text/plain',
+        'markdown': 'text/markdown',
+        'html': 'text/html'
+        // 'code': 'text/plain' // 代码类型暂不支持
+    }
+    const selectedType = event.target.value;
+    const mimeType = map[selectedType] || 'text/plain';
+    if (Object.hasOwn(map, selectedType)) {
+        if (event.target.id === 'textType') {
+            const position = document.getElementById('mimeType');
+            if (position) {
+                position.value = mimeType;
+            }
+        } else if (event.target.id === 'editTextType') {
+            const position = document.getElementById('editMimeType');
+            if (position) {
+                position.value = mimeType;
+            }
+        }
+    }
+}
+async function generateBytemdConfig(target,value='') {
+    const plugins = [
+            bytemdPluginBreaks(),
+            bytemdPluginGfm(),
+            bytemdPluginFrontmatter(),
+            bytemdPluginMediumZoom(),
+            bytemdPluginHighlight(),
+            byteMdEnhancementsPlugin(),
+            bytemdPluginGemoji(),
+        ];
+    // const locale = await (await fetch('https://npm.onmicrosoft.cn/bytemd@latest/locales/zh_Hans.json')).json();
+    const locale = await bytemd_locale_zh_cn;
+    const bytemdConfig = {
+        target: target,
+        props: {
+            value: value,
+            plugins: plugins,
+            locale: locale,
+            ...config.editor.config.bytemd
+        }
+    }
+    return bytemdConfig;
+}
+
+async function openBytemdModal(event) {
+    const targetId = event.target.getAttribute('target-id');
+    bytemdModalTargetId = targetId;
+    const value = document.getElementById(bytemdModalTargetId).value;
+    const config = await generateBytemdConfig(document.getElementById('bytemdContent'),value);
+    // 初始化 ByteMD 编辑器
+    await initBytemd(config);
+
+    const modal = document.getElementById('bytemdModal');
+    modal.style.display = 'block';
+    document.body.classList.add('NoteModal-open');
+}
+
+function confirmBytemdSave() {
+    document.getElementById(bytemdModalTargetId).value = editor_bytemd.$$.ctx[0];
+    closeBytemdModal();
+}
+
+function closeBytemdModal() {
+    const modal = document.getElementById('bytemdModal');
+    modal.style.display = 'none';
+    bytemdModalTargetId = '';
+    bytemddestroy();
+    document.body.classList.remove('NoteModal-open');
+    editor_bytemd = null;
+}
+
+async function initBytemd(config) {
+    editor_bytemd = new bytemd.Editor(config);
+    editor_bytemd.$on('change', (event) => {
+        const newValue = event.detail.value;
+        editor_bytemd.$set({
+            value: newValue
+        });
+    });
+}
+
+function bytemddestroy() {
+    editor_bytemd.$destroy();
+}
+
+function showbytemdbtn(){
+    if (document.getElementById('editTextType').value == 'markdown') {
+         document.querySelector('#editTextType+.bytemd-btn-container').classList.add('show');
+    } else {
+        document.querySelector('#editTextType+.bytemd-btn-container').classList.remove('show');
+    }
+    if (document.getElementById('textType').value == 'markdown') {
+         document.querySelector('#textType+.bytemd-btn-container').classList.add('show');
+    } else {
+        document.querySelector('#textType+.bytemd-btn-container').classList.remove('show');
+    }
+}
 
 // 在DOM加载完成后初始化clipboard
 document.addEventListener('DOMContentLoaded', function() {
     // 原有的初始化代码
+    OriginalTitle = document.title;
     initTheme();
     loadConfig();
     setupEventListeners();
     loadNotes();
+    showbytemdbtn();
     
     // 初始化clipboard
     initClipboard();
+
+    // 检查URL是否包含分享参数
+    viewNoteFromUrl();
+
+    // 获取 Worker 版本信息
+    getWorkerVersionInfo();
 
     // 初始化iziToast
     iziToast.settings({
@@ -1180,4 +1536,9 @@ document.addEventListener('DOMContentLoaded', function() {
         transitionIn: 'fadeIn',
         transitionOut: 'fadeOut'
     });
+   marked.setOptions({
+       renderer: new marked.Renderer(),
+       gfm: true,
+       breaks: true
+   });
 });

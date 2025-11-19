@@ -85,7 +85,7 @@ async function registerServiceWorker() {
 }
 
 // 页面加载完成后注册Service Worker
-if (localStorage.getItem('serviceWorkerEnabled') !== '0') {
+if (localStorage.getItem('serviceWorkerEnabled') == '1') {
     // 确保只添加一次事件监听
     if (!window.__serviceWorkerRegistered) {
         window.addEventListener('load', registerServiceWorker);

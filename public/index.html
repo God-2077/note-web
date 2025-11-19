@@ -4,19 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>笔记管理平台</title>
+    <!-- 样式 -->
     <link rel="shortcut icon" href="/favicon.ico">
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/github-markdown.css">
+    <!-- 脚本 -->
     <script type="text/javascript" defer src="/js/sdk.js"></script>
     <script type="text/javascript" defer src="/js/script.js"></script>
+    <!-- 外部库 -->
     <link rel="stylesheet" href="https://npm.onmicrosoft.cn/izitoast@1.4.0/dist/css/iziToast.min.css">
     <script defer src="https://npm.onmicrosoft.cn/izitoast@1.4.0/dist/js/iziToast.min.js"></script>
-    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> -->
-     <link rel="stylesheet" href="/css/fontello/css/more.css">
+    <link rel="stylesheet" href="/fontello/css/more.css">
     <script defer src="https://npm.onmicrosoft.cn/marked@5.1.0/marked.min.js"></script>
-    <link rel="stylesheet" href="https://npm.onmicrosoft.cn/highlight.js@11.9.0/styles/github-dark-dimmed.min.css">
+    <link rel="stylesheet" href="/css/highlight.css">
     <script defer src="https://npm.onmicrosoft.cn/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
     <script defer src="https://npm.onmicrosoft.cn/clipboard@2.0.11/dist/clipboard.min.js"></script>
+    <!-- 服务工作线程 -->
     <script defertype="text/javascript" defer src="/js/RegisterSW.js"></script>
+    <!-- ByteMD -->
+    <!-- ByteMD css -->
+    <!-- <link rel="stylesheet" href="https://npm.onmicrosoft.cn/bytemd/dist/index.css"> -->
+    <link rel="stylesheet" href="/css/bytemd.css">
+    <link rel="stylesheet" href="https://npm.onmicrosoft.cn/highlight.js@11.9.0/styles/github.min.css">
+    <!-- ByteMD js -->
+    <script>
+        let process = {}
+        process.env = {}
+        process.env.NODE_ENV = 'production'
+    </script>
+    <script src="https://npm.onmicrosoft.cn/bytemd"></script>
+    <!-- ByteMD 插件 -->
+    <script src="https://npm.onmicrosoft.cn/@bytemd/plugin-breaks"></script>
+    <script src="https://npm.onmicrosoft.cn/@bytemd/plugin-gfm"></script>
+    <script src="https://npm.onmicrosoft.cn/@bytemd/plugin-frontmatter"></script>
+    <script src="https://npm.onmicrosoft.cn/@bytemd/plugin-medium-zoom"></script>
+    <script src="https://npm.onmicrosoft.cn/@bytemd/plugin-highlight"></script>
+    <script src="https://npm.onmicrosoft.cn/@bytemd/plugin-gemoji"></script>
+    <script src="https://npm.onmicrosoft.cn/turndown/dist/turndown.js"></script>
+    <script src="/js/byteMdEnhancementsPlugin.js"></script>
 </head>
 <body>
     <div class="container">
@@ -88,7 +113,7 @@
                 <div id="notesList" class="notes-grid">
                     <!-- 示例笔记卡片 -->
                     <div class="note-card">
-                        <div class="note-title">示例Markdown笔记 <span class="text-type-badge">Markdown</span></div>
+                        <div class="note-title"><span class="limit-lines-2">示例Markdown笔记</span> <span class="text-type-badge">Markdown</span></div>
                         <div class="note-meta">
                             <span>创建: 2023/10/15 14:30:25</span>
                             <span>更新: 2023/10/15 14:30:25</span>
@@ -104,7 +129,7 @@
                     </div>
                     
                     <div class="note-card">
-                        <div class="note-title">示例HTML笔记 <span class="text-type-badge">HTML</span></div>
+                        <div class="note-title"><span class="limit-lines-2">示例HTML笔记</span> <span class="text-type-badge">HTML</span></div>
                         <div class="note-meta">
                             <span>创建: 2023/10/15 14:30:25</span>
                             <span>更新: 2023/10/15 14:30:25</span>
@@ -152,10 +177,17 @@
                         <label for="textType">文本类型</label>
                         <select id="textType">
                             <option value="plain">纯文本</option>
-                            <option value="markdown">Markdown</option>
+                            <option value="markdown" selected>Markdown</option>
                             <option value="html">HTML</option>
                             <option value="code">源代码</option>
                         </select>
+                        <div class="bytemd-btn-container show">
+                            <button class="openBytemdModal full" type="button" target-id="content">打开 ByteMD 编辑器</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mimeType">MIME类型</label>
+                        <input type="text" id="mimeType" placeholder="text/markdown" value="text/markdown">
                     </div>
                     <div class="form-group">
                         <label for="password">密码（可选）</label>
@@ -230,14 +262,27 @@
                 </label>
                 <p style="font-size: 12px; color: #666; margin-top: 5px;">如果不勾选，关闭浏览器后Token将被删除</p>
             </div>
+            <!-- bytemd -->
+             <div class="card-title" style="font-size: 1.125em;font-weight: 600;">ByteMD 设置</div>
+            <div class="form-group" id="bytemdConfig">
+                <!-- Mode -->
+                <label for="bytemdMode">选择 ByteMD 显示模式</label>
+                <select id="bytemdMode">
+                    <option value="auto">auto</option>
+                    <option value="split">split</option>
+                    <option value="tab">tab</option>
+                </select>
+                <label for="BytemdPreviewDebounce">ByteMD 预览的去抖动时间（毫秒）</label>
+                <input type="number" id="BytemdPreviewDebounce" value="300" min="100" max="1000">
+            </div>
             <div class="form-group">
                 <label for="serviceWorkerEnabled">Service Worker 状态</label>
                 <select id="serviceWorkerEnabled">
                     <option value="1">启用Service Worker</option>
-                    <option value="0">禁用Service Worker</option>
+                    <option value="0" selected>禁用Service Worker</option>
                 </select>
             </div>
-            <button id="saveConfig" class="full">保存配置</button>
+            <button id="saveConfig" class="full"><i class="icon-floppy"></i> 保存配置</button>
         </div>
     </div>
 
@@ -272,10 +317,17 @@
                         <label for="editTextType">文本类型</label>
                         <select id="editTextType">
                             <option value="plain">纯文本</option>
-                            <option value="markdown">Markdown</option>
+                            <option value="markdown" selected>Markdown</option>
                             <option value="html">HTML</option>
                             <option value="code">源代码</option>
                         </select>
+                        <div class="bytemd-btn-container show">
+                            <button class="openBytemdModal full" type="button" target-id="editContent">打开 ByteMD 编辑器</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editMimeType">MIME类型（留空则不修改）</label>
+                        <input type="text" id="editMimeType" placeholder="text/markdown" value="text/markdown">
                     </div>
                     <div class="form-group">
                         <label for="editPassword">密码（留空则不修改）</label>
@@ -289,17 +341,38 @@
             </div>
             <div class="modal-footer">
                 <div>
-                    <button class="btn-danger" id="deleteNote">删除笔记</button>
-                    <button id="editNote">修改笔记</button>
+                    <button class="btn-danger" id="deleteNote"><i class="icon-trash"></i></button>
+                    <button id="editNote"><i class="icon-pencil"></i></button>
+                    <button id="copyLink"><i class="icon-link"></i></button>
+                    <a href="#" id="RawLink" target="_blank"><button id="NoteRaw">Raw</button></a>
                 </div>
                 <div>
-                    <button id="saveEdit" class="hidden">保存修改</button>
-                    <button id="cancelEdit" class="hidden">取消</button>
-                    <button id="closeModal">关闭</button>
+                    <button id="saveEdit" class="hidden"><i class="icon-floppy"></i></button>
+                    <button id="cancelEdit" class="hidden"><i class="icon-level-up"></i></button>
+                    <button id="closeModal"><i class="icon-cancel"></i></button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- bytemd -->
+    <div class="modal" id="bytemdModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ByteMD 编辑器</h2>
+                <span class="close closeBytemdModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="bytemdContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="closeBytemdModal" class="btn-secondary">取消</button>
+                <button class="confirmBytemdModal" class="btn-primary">确定</button>
+            </div>
+        </div>
+    </div>
+
+
 
     <!-- 密码输入提示框 -->
     <div class="password-prompt" id="passwordPrompt">
@@ -316,9 +389,21 @@
         </div>
     </div>
 
-    <script>
+    <!-- 页脚区域 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>本站内容采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0 协议</a>，如有侵权请<a href="https://blog.ksable.top/about/" target="_blank">联系</a></p>
+                <hr>
+                <p>本项目基于 <a href="https://developers.cloudflare.com/workers" target="_blank" rel="noopener noreferrer">Cloudflare Workers</a> 构建，感兴趣的话可以<a href="https://blog.ksable.top/about/" target="_blank">联系</a>我</p>
+                <p id="workerVersionInfo">
+                    Worker Version Id: <span id="workerVersionId">N/A</span>
+                    <br>
+                    Last Update: <span id="lastUpdate">N/A</span>
+                </p>
+            </div>
+        </div>
+    </footer>
 
-
-    </script>
 </body>
 </html>

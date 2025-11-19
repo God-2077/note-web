@@ -1,5 +1,5 @@
 const swconfig = {
-    CACHE_VERSION: "v2.0",
+    CACHE_VERSION: "v3.25",
     runtimeCaching: [
         // {
         //     urlPattern: /^https:\/\/cdn\.example\.com\/.*/,
@@ -52,6 +52,8 @@ const swconfig = {
 const CACHE_NAME = `${swconfig.CACHE_VERSION}-cache`;
 const CACHE_META_KEY = 'cache-meta';
 const OFFLINE_URL = '/offline.html';
+
+try{console.log('当前缓存版本: ',swconfig.CACHE_VERSION)}catch(e){};
 
 // 匹配请求对应的规则
 function matchRule(request) {

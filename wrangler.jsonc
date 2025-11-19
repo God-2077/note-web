@@ -1,32 +1,55 @@
 {
-    "$schema": "node_modules/wrangler/config-schema.json",
-    "name": "notes-api",
-    "main": "src/index.ts",
-    "compatibility_date": "2025-09-06",
-    "kv_namespaces": [
-        {
-            "binding": "KV",
-            "id": "id",
-            "preview_id": "<ID_OF_PREVIEW_KV_NAMESPACE_FOR_LOCAL_DEVELOPMENT>"
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "notes-api",
+  "main": "src/index.ts",
+  // The Rate Limiting is in open beta!
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "GUEST_RATE_LIMITER_10",
+        "namespace_id": "1001",
+        "type": "ratelimit",
+        "simple": {
+          "limit": 12, // 10秒最多20次请求
+          "period": 10
         }
+      },
+      {
+        "name": "GUEST_RATE_LIMITER_60",
+        "namespace_id": "1002",
+        "type": "ratelimit",
+        "simple": {
+          "limit": 30, // 60秒最多40次请求
+          "period": 60
+        }
+      }
     ],
-    "vars": {
-        "ADMIN_TOKEN": "ADMIN_TOKEN",
-        "GUEST_VISIT": "GUEST_VISIT"
-    },
-    "observability": {
-        "enabled": true,
-        "head_sampling_rate": 1
-    },
-    "version_metadata": {
-        "binding": "CF_VERSION_METADATA"
-    },
-    // "triggers": {
-    //     "crons": [
-    //         "0 0 * * *"
-    //     ]
-    // },
-    "routes": [
+  },
+  "compatibility_date": "2025-09-06",
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "id",
+      "preview_id": "<ID_OF_PREVIEW_KV_NAMESPACE_FOR_LOCAL_DEVELOPMENT>"
+    }
+  ],
+  "vars": {
+    "ADMIN_TOKEN": "ADMIN_TOKEN",
+    "GUEST_VISIT": "1" // 允许访客访问
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
+  // "triggers": {
+  //     "crons": [
+  //         "0 0 * * *"
+  //     ]
+  // },
+  "routes": [
       {
         "pattern": "ksable.top",
         "custom_domain": true
@@ -36,11 +59,15 @@
         "custom_domain": true
       }
     ],
-    "assets": {
-      "directory": "public",
-      // "directory": "./dist/",
-      // "not_found_handling": "single-page-application",
-      "binding": "ASSETS",
-      "run_worker_first": ["/api/*","/console/*"]
-    }
+  "assets": {
+    "directory": "public",
+    // "directory": "./dist/",
+    // "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*",
+      "/manage/*",
+      "/test/*"
+    ]
+  },
 }

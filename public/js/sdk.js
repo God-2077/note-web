@@ -11,7 +11,14 @@ class NoteSDK {
       throw new Error('baseUrl is required');
     }
     
-    this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    // this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    this.baseUrl = new URL(config.baseUrl);
+    if (this.baseUrl.protocol !== 'http:' && this.baseUrl.protocol !== 'https:') {
+      throw new Error('baseUrl must be http or https');
+    }
+    if (this.baseUrl.pathname.endsWith('/')) {
+      this.baseUrl.pathname = this.baseUrl.pathname.slice(0, -1);
+    }
     this.token = config.token || null;
     this.password = config.password || null;
     this.headers = {
@@ -47,6 +54,7 @@ class NoteSDK {
    * @param {string} noteData.title - 笔记标题
    * @param {string} noteData.content - 笔记内容
    * @param {string} [noteData.textType='plain'] - 文本类型
+   * @param {string} [noteData.mimeType='text/plain'] - MIME类型
    * @param {number} [noteData.expiration] - 过期时间（秒）
    * @param {number} [noteData.expirationTtl] - 相对过期时间（秒）
    * @param {string} [noteData.password] - 加密密码
@@ -58,6 +66,7 @@ class NoteSDK {
       title: noteData.title,
       content: noteData.content,
       textType: noteData.textType || 'plain',
+      mimeType: noteData.mimeType || 'text/plain',
       expiration: noteData.expiration,
       expirationTtl: noteData.expirationTtl,
       password: noteData.password || this.password
@@ -78,6 +87,7 @@ class NoteSDK {
    * @param {string} [updateData.title] - 新标题
    * @param {string} [updateData.content] - 新内容
    * @param {string} [updateData.textType] - 新文本类型
+   * @param {string} [updateData.mimeType] - 新MIME类型
    * @param {number} [updateData.expiration] - 新过期时间（秒）
    * @param {number} [updateData.expirationTtl] - 新相对过期时间（秒）
    * @param {string} [updateData.password] - 新加密密码
@@ -89,6 +99,7 @@ class NoteSDK {
       title: updateData.title,
       content: updateData.content,
       textType: updateData.textType,
+      mimeType: updateData.mimeType || 'text/plain',
       expiration: updateData.expiration,
       expirationTtl: updateData.expirationTtl,
       password: updateData.password || this.password
@@ -118,6 +129,39 @@ class NoteSDK {
     
     const fullUrl = `${url}?${params.toString()}`;
     return this._fetch(fullUrl);
+  }
+
+  /**
+   * 获取笔记 Raw 链接
+   * @param {string} id - 笔记ID
+   * @param {string} [password] - 加密密码（可选）
+   * @param {string} [textType='plain'] - 文本类型(plain(Content-type: text/plain), markdown(渲染成HTML), html(Content-type: text/html))
+   * @returns {Promise<string>} - 原始笔记内容
+   */
+
+  getNoteRawUrl(id, password, textType) {
+    const map = {
+      'plain': 'text',
+      'markdown': 'md',
+      'html': 'html'
+    }
+    let suffix;
+    if (textType && map[textType]) {
+      suffix = map[textType]
+    } else if (textType) {
+      throw new TypeError('Invalid textType');
+    } else {
+      suffix = ''
+    }
+    suffix = `/${suffix}`
+
+    const url = `${this.baseUrl}/notes/${id}/raw${suffix}`;
+
+    if (password) {
+      url += `?pwd=${password}`;
+    }
+    
+    return url
   }
 
   /**

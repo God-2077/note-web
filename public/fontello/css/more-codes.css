@@ -4,7 +4,14 @@
 .icon-sun:before { content: '\e802'; } /* '' */
 .icon-moon:before { content: '\e803'; } /* '' */
 .icon-book:before { content: '\e804'; } /* '' */
+.icon-pencil:before { content: '\e805'; } /* '' */
+.icon-cancel:before { content: '\e806'; } /* '' */
+.icon-floppy:before { content: '\e807'; } /* '' */
+.icon-trash:before { content: '\e808'; } /* '' */
+.icon-level-up:before { content: '\e809'; } /* '' */
+.icon-link:before { content: '\e80a'; } /* '' */
 .icon-copy:before { content: '\f0c5'; } /* '' */
 .icon-angle-circled-up:before { content: '\f139'; } /* '' */
 .icon-angle-circled-down:before { content: '\f13a'; } /* '' */
+.icon-share:before { content: '\f1e0'; } /* '' */
 .icon-sticky-note:before { content: '\f249'; } /* '' */
