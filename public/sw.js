@@ -1,17 +1,26 @@
 const swconfig = {
-    CACHE_VERSION: "v3.25",
+    CACHE_VERSION: "v3.28",
     runtimeCaching: [
         // {
         //     urlPattern: /^https:\/\/cdn\.example\.com\/.*/,
         //     handler: "CacheFirst",
         //     maxAgeSeconds: 60 * 60 * 24 * 365
         // },
+        {
+            urlPattern: /^https:\/\/unpkg\.com\/.*/,
+            handler: "CacheFirst",
+            maxAgeSeconds: 60 * 60 * 24 * 365
+        },
         // {
         //     urlPattern: /https:\/\/blog.ksable.top\//gi,
         //     handler: "NetworkFirst",
         //     maxAgeSeconds: 60 * 60 * 24 * 7
         // },
         {
+            urlPattern: RegExp('^https://unpkg.ihwx.cn'),
+            handler: "CacheFirst",
+            maxAgeSeconds: 60 * 60 * 24 * 365
+        },{
             urlPattern: RegExp('^https://www.favicon.vip/get.php'),
             handler: "CacheFirst",
             maxAgeSeconds: 60 * 60 * 24 * 365

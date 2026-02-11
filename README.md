@@ -1,18 +1,21 @@
-# note-web
-
-开发
-
-```shell
+```txt
 npm install
 npm run dev
 ```
 
-部署
-
-```shell
+```txt
 npm run deploy
 ```
 
-记得要在 `wrangler.jsonc` 填入自己的配置
+[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
 
+```txt
+npm run cf-typegen
+```
 
+Pass the `CloudflareBindings` as generics when instantiation `Hono`:
+
+```ts
+// src/index.ts
+const app = new Hono<{ Bindings: CloudflareBindings }>()
+```

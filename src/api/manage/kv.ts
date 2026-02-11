@@ -36,7 +36,7 @@ const kv = async (c: Context) => {
                 code: 200,
                 success: true,
                 message: "success",
-                date: {
+                data: {
                     operation: operation,
                     key: key,
                     value: value
@@ -49,7 +49,7 @@ const kv = async (c: Context) => {
                 code: 200,
                 success: true,
                 message: "success",
-                date: {
+                data: {
                     operation: operation,
                     key: key,
                     value: value
@@ -60,7 +60,7 @@ const kv = async (c: Context) => {
             return c.json(mergeObject(defaultJsonResponse, {
                 code: 200,
                 success: true,
-                date: {
+                data: {
                     operation: operation,
                     key: key,
                     value: null
@@ -72,7 +72,7 @@ const kv = async (c: Context) => {
                 code: 200,
                 success: true,
                 message: "success",
-                date: {
+                data: {
                     operation: operation,
                     key,
                     list: value

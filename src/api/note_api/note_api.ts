@@ -11,7 +11,7 @@ import { listNote } from './listNote';
 import { searchNote } from './searchNote';
 import { verifyAdmin } from './verifyAdmin'
 import { getVersion } from './getVersion';
-
+import { getFolders } from './getFolders'
 
 const note_api = new Hono<{ Bindings: CloudflareBindings }>({
     strict: false
@@ -51,6 +51,9 @@ note_api.on(["DELETE", "GET"], '/delete/:id', adminAuthMiddleware, deleteNote);
 
 // list note
 note_api.get('/list', listNote);
+
+// 获取所有文件夹
+note_api.get('/folders', getFolders);
 
 // 搜索路由
 note_api.get('/search', searchNote);

@@ -10,7 +10,7 @@ class NoteSDK {
     if (!config.baseUrl) {
       throw new Error('baseUrl is required');
     }
-    
+
     // this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.baseUrl = new URL(config.baseUrl);
     if (this.baseUrl.protocol !== 'http:' && this.baseUrl.protocol !== 'https:') {
@@ -55,6 +55,7 @@ class NoteSDK {
    * @param {string} noteData.content - 笔记内容
    * @param {string} [noteData.textType='plain'] - 文本类型
    * @param {string} [noteData.mimeType='text/plain'] - MIME类型
+   * @param {string[]} [noteData.folders=[]] - 文件夹数组
    * @param {number} [noteData.expiration] - 过期时间（秒）
    * @param {number} [noteData.expirationTtl] - 相对过期时间（秒）
    * @param {string} [noteData.password] - 加密密码
@@ -67,6 +68,7 @@ class NoteSDK {
       content: noteData.content,
       textType: noteData.textType || 'plain',
       mimeType: noteData.mimeType || 'text/plain',
+      folders: noteData.folders || [],
       expiration: noteData.expiration,
       expirationTtl: noteData.expirationTtl,
       password: noteData.password || this.password
@@ -88,6 +90,7 @@ class NoteSDK {
    * @param {string} [updateData.content] - 新内容
    * @param {string} [updateData.textType] - 新文本类型
    * @param {string} [updateData.mimeType] - 新MIME类型
+   * @param {string[]} [updateData.folders=[]] - 新文件夹数组
    * @param {number} [updateData.expiration] - 新过期时间（秒）
    * @param {number} [updateData.expirationTtl] - 新相对过期时间（秒）
    * @param {string} [updateData.password] - 新加密密码
@@ -100,6 +103,7 @@ class NoteSDK {
       content: updateData.content,
       textType: updateData.textType,
       mimeType: updateData.mimeType || 'text/plain',
+      folders: updateData.folders || [],
       expiration: updateData.expiration,
       expirationTtl: updateData.expirationTtl,
       password: updateData.password || this.password
@@ -122,11 +126,11 @@ class NoteSDK {
   async getNote(id, password) {
     const url = `${this.baseUrl}/notes/${id}`;
     const params = new URLSearchParams();
-    
+
     if (password || this.password) {
       params.append('pwd', password || this.password);
     }
-    
+
     const fullUrl = `${url}?${params.toString()}`;
     return this._fetch(fullUrl);
   }
@@ -160,7 +164,7 @@ class NoteSDK {
     if (password) {
       url += `?pwd=${password}`;
     }
-    
+
     return url
   }
 
@@ -180,6 +184,7 @@ class NoteSDK {
    * @param {string} [options.sort='date'] - 排序方式 (date, update, a-z, z-a)
    * @param {number} [options.limit=100] - 每页数量
    * @param {number} [options.page=1] - 页码
+   * @param {string[]} [options.folders] - 文件夹数组
    * @param {number} [options.startTime] - 开始时间戳
    * @param {number} [options.endTime] - 结束时间戳
    * @returns {Promise<Object>} - 笔记列表
@@ -190,10 +195,11 @@ class NoteSDK {
       sort: options.sort || 'date',
       limit: options.limit || 100,
       page: options.page || 1,
+      ...(options.folders && options.folders.length > 0 && { folders: options.folders.join(',') }),
       ...(options.startTime && { startTime: options.startTime }),
       ...(options.endTime && { endTime: options.endTime })
     });
-    
+
     return this._fetch(`${url}?${params.toString()}`);
   }
 
@@ -202,6 +208,7 @@ class NoteSDK {
    * @param {string} query - 搜索关键词
    * @param {Object} [options] - 搜索选项
    * @param {number} [options.limit=20] - 每页数量
+   * @param {string[]} [options.folders] - 文件夹数组
    * @param {number} [options.page=1] - 页码
    * @returns {Promise<Object>} - 搜索结果
    */
@@ -209,10 +216,11 @@ class NoteSDK {
     const url = `${this.baseUrl}/search`;
     const params = new URLSearchParams({
       q: query,
+      ...(options.folders && options.folders.length > 0 && { folders: options.folders.join(',') }),
       ...(options.limit && { limit: options.limit }),
       ...(options.page && { page: options.page })
     });
-    
+
     return this._fetch(`${url}?${params.toString()}`);
   }
 
@@ -224,7 +232,7 @@ class NoteSDK {
     const url = `${this.baseUrl}/verify-admin`;
     return this._fetch(url);
   }
-  
+
   /**
    * 获取版本信息
    * @returns {Promise<Object>} - 版本信息
@@ -247,11 +255,11 @@ class NoteSDK {
     try {
       const response = await fetch(url, config);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || `Request failed with status ${response.status}`);
       }
-      
+
       return data;
     } catch (error) {
       console.error('API Error:', error);

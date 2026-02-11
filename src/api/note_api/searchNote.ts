@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { defaultJsonResponse, JsonResponseType, mergeObject, mergelistitem, defaultNoteIndexItem, NoteIndexItemType } from '../../models/models';
 import { db_index } from '../../db/db-index-util';
+import { hasIntersection } from '../../utils/hasIntersection';
 
 const searchNote = async (c: Context) => {
     const query = c.req.query('q');
@@ -24,10 +25,32 @@ const searchNote = async (c: Context) => {
     const searchTerm = query.toLowerCase();
 
     // 搜索id和title
-    const searchResults = noteList.filter((note: any) => {
+    let searchResults = noteList.filter((note: any) => {
         return note.id.toLowerCase() == searchTerm ||
             note.title.toLowerCase().includes(searchTerm);
     });
+
+    // 文件夹过滤
+    const folders = (function () {
+        const folder_raw = c.req.query('folders');
+        if (!folder_raw || typeof folder_raw !== 'string' || folder_raw.trim() === '') {
+            return [];
+        }
+        const folderList = folder_raw.split(',')
+            .map(f => f.trim().toLowerCase())
+            .map(f => f.replace(/^uncat$/i, 'uncategorized'))
+        const uniqueFolderList = [...new Set(folderList)];
+        return uniqueFolderList;
+    })();
+    if (folders.length > 0) {
+        searchResults = searchResults.filter((note: any) => {
+            // 处理无文件夹的情况
+            if (!note.folders) if (note.folders = []) note.folders = ['uncategorized'];
+            // 所有 note 添加 all 文件夹
+            note.folders.push('all');
+            return hasIntersection(folders, note.folders, true)
+        })
+    }
 
     // 分页参数处
     const total = searchResults.length;
@@ -38,12 +61,15 @@ const searchNote = async (c: Context) => {
     // 应用分页
     paginatedList = searchResults.slice(startIndex, startIndex + limit);
 
+
+
     return c.json(mergeObject(defaultJsonResponse, {
         code: 200,
         success: true,
         message: "successfully",
         data: {
             keywords: query,
+            folders,
             resultCount: searchResults.length,
             total,
             page: page + 1,

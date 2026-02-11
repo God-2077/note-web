@@ -50,7 +50,7 @@
 }
 
 body {
-    font-family: YouYuan,'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: YouYuan, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
@@ -254,7 +254,7 @@ button:disabled {
 }
 
 /* 限制标题显示两行 */
-.note-title > .limit-lines-2 {
+.note-title>.limit-lines-2 {
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -599,9 +599,12 @@ input[type="checkbox"] {
 
 .modal-footer button#NoteRaw {
     font-size: 1em;
+
     a {
-        color: inherit; /* 继承父元素的颜色 */
-        text-decoration: none; /* 去除下划线 */
+        color: inherit;
+        /* 继承父元素的颜色 */
+        text-decoration: none;
+        /* 去除下划线 */
     }
 }
 
@@ -679,7 +682,7 @@ input[type="checkbox"] {
         padding: 15px 0;
         margin-top: 30px;
     }
-    
+
     .footer-content p {
         font-size: 13px;
     }
@@ -715,6 +718,7 @@ input[type="checkbox"] {
 div.bytemd.bytemd-split {
     margin-bottom: 100px;
 }
+
 /* 全屏编辑器 z-index 提高 */
 .bytemd-fullscreen.bytemd {
     z-index: 15;
@@ -725,21 +729,24 @@ div.bytemd.bytemd-split {
 /* 仅作用在 note-content */
 .note-content {
     input[type="checkbox"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 1.2em;
-    height: 1.2em;
-    border: 1.95px solid;
-    position: relative;
+        -webkit-appearance: none;
+        appearance: none;
+        width: 1.2em;
+        height: 1.2em;
+        border: 1.95px solid;
+        position: relative;
     }
+
     input[type="checkbox"]:checked::before {
-    content: '✓'; /* 自定义选中符号 */
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 16px;
+        content: '✓';
+        /* 自定义选中符号 */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 16px;
     }
+
     /* input[type="checkbox"]:checked {
     background-color: #007bff;
     } */

@@ -54,6 +54,7 @@ interface NoteType {
     length: number;
     textType: string | null;
     mimeType: string | null;
+    folders: string[];
     ip: string | null;
     user_agent: string | null;
     encryption: boolean;
@@ -70,6 +71,7 @@ const defaultNote: NoteType = {
     length: NaN,
     textType: "markdown",
     mimeType: "text/markdown",
+    folders: [],
     ip: null,
     user_agent: "Unknown",
     encryption: false,
@@ -86,7 +88,9 @@ interface NoteIndexItemType {
     title: string;
     length: number;
     textType: string;
+    mimeType: string;
     encryption: boolean;
+    folders: string[];
     createdAt: number | null;
     updatedAt: number | null;
     expiration: number | null;
@@ -97,7 +101,9 @@ const defaultNoteIndexItem: NoteIndexItemType = {
     "title": "Untitled",
     "length": 0,
     "textType": "plain",
+    "mimeType": "text/plain",
     "encryption": false,
+    "folders": [],
     "createdAt": 0,
     "updatedAt": 0,
     "expiration": null
@@ -113,6 +119,7 @@ interface List {
     startTime: number;
     endTime: number;
     totalPages: number;
+    folders: string[];
     notes: NoteIndexItemType[];
 }
 
@@ -124,6 +131,7 @@ const defaultList: List = {
     "startTime": 0,
     "endTime": 0,
     "totalPages": 0,
+    "folders": [],
     "notes": []
 }
 

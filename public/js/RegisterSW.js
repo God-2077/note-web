@@ -7,7 +7,7 @@ async function registerServiceWorker() {
             await new Promise(resolve => setTimeout(resolve, 3000));
 
             // 注册Service Worker
-            const registration = await navigator.serviceWorker.register('/sw.js', {
+            const registration = await navigator.serviceWorker.register('/sw_v4.js', {
                 scope: '/'
             });
 
@@ -98,3 +98,11 @@ navigator.serviceWorker.addEventListener('controllerchange', () => {
     console.log('Service Worker控制器已变更');
     // 可以执行页面刷新等操作
 });
+
+// 在页面中
+if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+  navigator.serviceWorker.controller.postMessage({
+    type: 'PAGE_LOADED',
+    url: window.location.href
+  });
+}

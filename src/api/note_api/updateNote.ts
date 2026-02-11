@@ -48,7 +48,24 @@ const updateNote = async (c: Context) => {
         expiration = null;
     }
 
-
+    // 处理文件夹
+    const folders = (function () {
+        // 0. 如果未提供新文件夹列表，保持原文件夹不变
+        if (!body.folders) {
+            return existingNote.folders;
+        }
+        // 1. 获取查询参数并确保为字符串类型
+        const folder_raw: string[] = body.folders ?? [];
+        // 2. 定义需要排除的关键词（小写，集合查询效率更高）
+        const excludeSet: Set<string> = new Set(['', 'all', 'uncat', 'uncategorized']);
+        // 3. 拆分 + 一次过滤（兼顾大小写 + 去重）
+        const folderList: string[] = folder_raw
+            .map((f: string) => f.trim().toLowerCase()) // 统一转小写
+            .filter((f: string) => !excludeSet.has(f));
+        // 4. 可选：去重（根据业务需求决定是否保留）
+        const uniqueFolderList = [...new Set(folderList)];
+        return uniqueFolderList;
+    })();
 
     // 构建更新数据
     const updatedData = mergeObject(existingNote, {
@@ -57,6 +74,7 @@ const updateNote = async (c: Context) => {
         length: body.content.length ?? existingNote.length,
         textType: body.textType ?? existingNote.textType,
         mimeType: body.mimeType ?? existingNote.mimeType,
+        folders: folders ?? existingNote.folders,
         encryption: body.password ? true : false,
         password: body.password ?? null,
         updatedAt: now,
@@ -76,6 +94,8 @@ const updateNote = async (c: Context) => {
         title: updatedData.title,
         length: updatedData.length,
         textType: updatedData.textType,
+        mimeType: updatedData.mimeType,
+        folders: updatedData.folders,
         encryption: updatedData.encryption,
         createdAt: existingNote.createdAt,
         updatedAt: now,
@@ -91,7 +111,7 @@ const updateNote = async (c: Context) => {
             title: updatedData.title,
             length: updatedData.length
         }
-    }) as JsonResponseType, 200);  
+    }) as JsonResponseType, 200);
 }
 
 export { updateNote }
